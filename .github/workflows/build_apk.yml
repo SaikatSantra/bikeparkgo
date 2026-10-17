@@ -29,10 +29,12 @@ jobs:
           channel: 'stable'
           cache: true
 
-      - name: Verify Toolchain
+      - name: Accept Android Licenses & Ensure SDK 35
         run: |
-          java -version
-          flutter --version
+          echo "Accepting Android SDK licenses..."
+          yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses > /dev/null 2>&1 || true
+          echo "Installing platforms;android-35..."
+          $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager "platforms;android-35" > /dev/null 2>&1 || true
 
       - name: Generate Official Android Project with Wrapper
         run: |
@@ -55,7 +57,23 @@ jobs:
 
       - name: Build Release APK
         run: |
-          flutter build apk --release --no-tree-shake-icons
+          set -o pipefail
+          flutter build apk --release --no-tree-shake-icons 2>&1 | tee build_log.txt
+
+      - name: Report Failure Logs
+        if: failure()
+        run: |
+          echo "### ❌ Build Failure Summary (Last 60 lines):"
+          tail -n 60 build_log.txt
+          ERR=$(grep -E "FAILURE|Error:|Execution failed|cannot find symbol|package .* does not exist" build_log.txt | tail -n 5 | tr '\n' ' ' || echo "Build failed")
+          echo "::error title=Gradle Error::$ERR"
+
+      - name: Upload Build Log on Failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: Android-Build-Failure-Log
+          path: build_log.txt
 
       - name: Verify and Package APK
         run: |

@@ -52,7 +52,7 @@ if (fs.existsSync(appGradlePath)) {
   console.warn('! android/app/build.gradle not found');
 }
 
-// 3. android/build.gradle: Enforce compileSdkVersion 35 across all plugin subprojects
+// 3. android/build.gradle: Enforce compileSdkVersion 35 and namespace across all plugin subprojects
 const rootGradlePath = path.join('android', 'build.gradle');
 if (fs.existsSync(rootGradlePath)) {
   let rootGradle = fs.readFileSync(rootGradlePath, 'utf8');
@@ -65,7 +65,6 @@ subprojects {
                     namespace project.group
                 }
                 compileSdkVersion 35
-                buildToolsVersion "35.0.0"
                 defaultConfig {
                     minSdkVersion 21
                     targetSdkVersion 35
@@ -75,10 +74,10 @@ subprojects {
     }
 }
 `;
-  if (!rootGradle.includes('buildToolsVersion "35.0.0"')) {
+  if (!rootGradle.includes('subprojects {')) {
     rootGradle += '\n' + subprojectRule;
     fs.writeFileSync(rootGradlePath, rootGradle, 'utf8');
-    console.log('✓ Added subprojects compileSdkVersion 35 rule to android/build.gradle');
+    console.log('✓ Added subprojects compileSdkVersion 35 and namespace fallback to android/build.gradle');
   }
 } else {
   console.warn('! android/build.gradle not found');
