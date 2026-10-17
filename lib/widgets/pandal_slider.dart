@@ -270,10 +270,18 @@ class _PandalSliderState extends State<PandalSlider> {
                         child: SizedBox(
                           height: 32,
                           child: ElevatedButton.icon(
-                            onPressed: () {
-                              LocationService.launchWalkingNavigation(
+                            onPressed: () async {
+                              final ok = await LocationService.launchWalkingNavigation(
                                 LatLng(pandal.latitude, pandal.longitude),
                               );
+                              if (!ok && context.mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text('Could not open Google Maps. Please install Google Maps or a browser.'),
+                                    duration: Duration(seconds: 2),
+                                  ),
+                                );
+                              }
                             },
                             icon: const Icon(Icons.navigation, size: 14),
                             label: const Text('Walk Here', style: TextStyle(fontSize: 11)),

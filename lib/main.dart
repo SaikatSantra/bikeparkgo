@@ -17,20 +17,20 @@ void main() {
   runApp(
     ChangeNotifierProvider(
       create: (_) => ThemeNotifier(),
-      child: const BikeParkGoApp(),
+      child: const ParkVehicleGoApp(),
     ),
   );
 }
 
-class BikeParkGoApp extends StatelessWidget {
-  const BikeParkGoApp({super.key});
+class ParkVehicleGoApp extends StatelessWidget {
+  const ParkVehicleGoApp({super.key});
 
   @override
   Widget build(BuildContext context) {
     final themeNotifier = context.watch<ThemeNotifier>();
 
     return MaterialApp(
-      title: 'BikeParkGo',
+      title: 'ParkVehicleGo',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.dayTheme,
       darkTheme: AppTheme.nightTheme,

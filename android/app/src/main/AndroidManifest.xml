@@ -13,8 +13,33 @@
     <uses-feature android:name="android.hardware.camera.autofocus" android:required="false" />
     <uses-feature android:name="android.hardware.location.gps" android:required="false" />
 
+    <!-- Package Visibility Queries for Android 11+ (API 30+) required for Google Maps & Web links -->
+    <queries>
+        <!-- Support Opening Google Maps Web Links & Browsers -->
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:scheme="https" />
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:scheme="http" />
+        </intent>
+        <!-- Support Geo scheme for Maps -->
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:scheme="geo" />
+        </intent>
+        <!-- Support Native Google Navigation intent -->
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:scheme="google.navigation" />
+        </intent>
+        <!-- Support Native Google Maps App package directly -->
+        <package android:name="com.google.android.apps.maps" />
+    </queries>
+
     <application
-        android:label="BikeParkGo"
+        android:label="ParkVehicleGo"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher"
         android:hardwareAccelerated="true"

@@ -256,7 +256,7 @@ class _AuthScreenState extends State<AuthScreen> {
                   ),
                   const SizedBox(height: 12),
                   Text(
-                    'BikeParkGo',
+                    'ParkVehicleGo',
                     style: TextStyle(
                       fontSize: 28,
                       fontWeight: FontWeight.w900,
@@ -265,7 +265,7 @@ class _AuthScreenState extends State<AuthScreen> {
                     ),
                   ),
                   const Text(
-                    'Safe Bike Parking & Navigation Tracker',
+                    'Safe Vehicle Parking & Navigation Tracker',
                     style: TextStyle(fontSize: 13, color: Colors.grey),
                   ),
                   const SizedBox(height: 24),

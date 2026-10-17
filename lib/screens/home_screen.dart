@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
@@ -168,7 +169,7 @@ class _HomeScreenState extends State<HomeScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           backgroundColor: Color(0xFF15803D),
-          content: Text('🔒 Bike parked successfully! Safe Pujo hopping!'),
+          content: Text('🔒 Vehicle parked securely! Safe Pujo hopping!'),
         ),
       );
     }
@@ -178,8 +179,8 @@ class _HomeScreenState extends State<HomeScreen> {
     final confirm = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Clear Bike Spot?'),
-        content: const Text('Are you sure you want to clear your current parked bike location?'),
+        title: const Text('Clear Vehicle Spot?'),
+        content: const Text('Are you sure you want to clear your current parked vehicle location?'),
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
           ElevatedButton(
@@ -260,7 +261,7 @@ class _HomeScreenState extends State<HomeScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Text(
-                  'BikeParkGo',
+                  'ParkVehicleGo',
                   style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold, letterSpacing: 0.5),
                 ),
                 Text(
@@ -370,97 +371,175 @@ class _HomeScreenState extends State<HomeScreen> {
                 const SizedBox(height: 12),
               ],
 
-              // 2. RADAR & DISTANCE CARD
-              Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Row(
+              // 2. COMPACT GLASSMORPHISM STATUS & RADAR CARD
+              ClipRRect(
+                borderRadius: BorderRadius.circular(16),
+                child: BackdropFilter(
+                  filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: isDark
+                            ? [
+                                Colors.white.withOpacity(0.08),
+                                Colors.white.withOpacity(0.02),
+                              ]
+                            : [
+                                Colors.white.withOpacity(0.85),
+                                Colors.white.withOpacity(0.55),
+                              ],
+                      ),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(
+                        color: const Color(0xFFF59E0B).withOpacity(isDark ? 0.35 : 0.6),
+                        width: 1.2,
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(isDark ? 0.3 : 0.06),
+                          blurRadius: 14,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: Row(
+                      children: [
+                        // Left: Status Pill + Time + GPS
+                        Expanded(
+                          flex: 5,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisSize: MainAxisSize.min,
                             children: [
                               Container(
-                                width: 10,
-                                height: 10,
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                                 decoration: BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  color: _bikeLocation != null ? Colors.green : Colors.amber,
+                                  color: (_bikeLocation != null ? Colors.green : Colors.amber).withOpacity(0.18),
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(
+                                    color: _bikeLocation != null ? Colors.green : Colors.amber,
+                                    width: 1.0,
+                                  ),
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Container(
+                                      width: 7,
+                                      height: 7,
+                                      decoration: BoxDecoration(
+                                        shape: BoxShape.circle,
+                                        color: _bikeLocation != null ? Colors.greenAccent : Colors.amberAccent,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 5),
+                                    Text(
+                                      _bikeLocation != null ? 'VEHICLE SECURED' : 'READY TO PARK',
+                                      style: TextStyle(
+                                        fontSize: 10.5,
+                                        fontWeight: FontWeight.w800,
+                                        letterSpacing: 0.4,
+                                        color: _bikeLocation != null ? Colors.green : Colors.amber,
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               ),
-                              const SizedBox(width: 8),
+                              const SizedBox(height: 5),
                               Text(
-                                _bikeLocation != null ? 'BIKE SECURED' : 'READY TO PARK',
+                                _parkedTime,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
                                 style: TextStyle(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.bold,
-                                  color: _bikeLocation != null ? Colors.green : Colors.amber,
+                                  fontSize: 10.5,
+                                  fontWeight: FontWeight.w500,
+                                  color: theme.colorScheme.onSurface.withOpacity(0.65),
                                 ),
+                              ),
+                              Text(
+                                _gpsStatus,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(fontSize: 9.5, color: Color(0xFF16A34A), fontWeight: FontWeight.w600),
                               ),
                             ],
                           ),
-                          Text(
-                            _parkedTime,
-                            style: TextStyle(fontSize: 11, color: theme.colorScheme.onSurface.withOpacity(0.6)),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 14),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
+                        ),
+
+                        // Center: Distance Metric
+                        Expanded(
+                          flex: 4,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.center,
+                            mainAxisSize: MainAxisSize.min,
                             children: [
-                              const Text('DISTANCE TO BIKE', style: TextStyle(fontSize: 11, color: Colors.grey)),
-                              const SizedBox(height: 2),
+                              const Text(
+                                'DISTANCE TO VEHICLE',
+                                style: TextStyle(
+                                  fontSize: 8.5,
+                                  fontWeight: FontWeight.w700,
+                                  letterSpacing: 0.5,
+                                  color: Colors.grey,
+                                ),
+                              ),
+                              const SizedBox(height: 1),
                               Text(
                                 _bikeLocation == null
                                     ? '-- m'
                                     : _distanceMeters < 1000
                                         ? '${_distanceMeters.round()} m'
-                                        : '${(_distanceMeters / 1000).toStringAsFixed(2)} km',
+                                        : '${(_distanceMeters / 1000).toStringAsFixed(1)} km',
                                 style: const TextStyle(
-                                  fontSize: 32,
+                                  fontSize: 20,
                                   fontWeight: FontWeight.w900,
                                   color: Color(0xFFF59E0B),
                                 ),
                               ),
-                              Text(
-                                _gpsStatus,
-                                style: const TextStyle(fontSize: 10, color: Colors.green),
+                            ],
+                          ),
+                        ),
+
+                        const SizedBox(width: 6),
+
+                        // Right: Compact Glass Radar Compass
+                        Container(
+                          width: 48,
+                          height: 48,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            gradient: RadialGradient(
+                              colors: [
+                                const Color(0xFFB91C1C).withOpacity(0.28),
+                                const Color(0xFFF59E0B).withOpacity(0.08),
+                              ],
+                            ),
+                            border: Border.all(
+                              color: const Color(0xFFF59E0B).withOpacity(0.8),
+                              width: 1.2,
+                            ),
+                            boxShadow: [
+                              BoxShadow(
+                                color: const Color(0xFFF59E0B).withOpacity(0.2),
+                                blurRadius: 6,
                               ),
                             ],
                           ),
-                          // Rotating Arrow Radar / Compass
-                          Container(
-                            width: 84,
-                            height: 84,
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              gradient: RadialGradient(
-                                colors: [
-                                  const Color(0xFFB91C1C).withOpacity(0.25),
-                                  const Color(0xFFB91C1C).withOpacity(0.05),
-                                ],
-                              ),
-                              border: Border.all(color: const Color(0xFFF59E0B), width: 1.5),
-                            ),
-                            child: Center(
-                              child: Transform.rotate(
-                                angle: (_bearingDegrees * 3.141592653589793 / 180),
-                                child: const Icon(
-                                  Icons.navigation,
-                                  size: 42,
-                                  color: Color(0xFFDC2626),
-                                ),
+                          child: Center(
+                            child: Transform.rotate(
+                              angle: (_bearingDegrees * 3.141592653589793 / 180),
+                              child: const Icon(
+                                Icons.navigation,
+                                size: 24,
+                                color: Color(0xFFDC2626),
                               ),
                             ),
                           ),
-                        ],
-                      ),
-                    ],
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ),
@@ -503,9 +582,9 @@ class _HomeScreenState extends State<HomeScreen> {
                               if (_bikeLocation != null)
                                 Marker(
                                   point: _bikeLocation!,
-                                  width: 36,
-                                  height: 36,
-                                  child: const Text('🏍️', style: TextStyle(fontSize: 26)),
+                                  width: 38,
+                                  height: 38,
+                                  child: const Text('🚗🏍️', style: TextStyle(fontSize: 24)),
                                 ),
                               if (_selectedPandal != null)
                                 Marker(
@@ -539,62 +618,88 @@ class _HomeScreenState extends State<HomeScreen> {
 
               const SizedBox(height: 12),
 
-              // 4. LANDMARK NOTE CARD
-              Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(14),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          const Text(
-                            '📍 Landmark Note (লক্ষণ / গেট নম্বর)',
-                            style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFFF59E0B)),
-                          ),
-                          if (_bikeLocation != null)
-                            GestureDetector(
-                              onTap: _resetBikeSpot,
-                              child: const Text(
-                                'Clear Spot',
-                                style: TextStyle(fontSize: 11, color: Colors.redAccent, fontWeight: FontWeight.bold),
-                              ),
-                            ),
-                        ],
+              // 4. LANDMARK NOTE CARD (GLASSMORPHISM)
+              ClipRRect(
+                borderRadius: BorderRadius.circular(16),
+                child: BackdropFilter(
+                  filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+                  child: Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: isDark
+                            ? [Colors.white.withOpacity(0.06), Colors.white.withOpacity(0.02)]
+                            : [Colors.white.withOpacity(0.85), Colors.white.withOpacity(0.55)],
                       ),
-                      const SizedBox(height: 8),
-                      TextField(
-                        controller: _noteController,
-                        decoration: InputDecoration(
-                          hintText: 'e.g. Near Gate 3, opposite to roll stall, electric pole #42',
-                          hintStyle: const TextStyle(fontSize: 12),
-                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-                          contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(
+                        color: const Color(0xFFF59E0B).withOpacity(isDark ? 0.3 : 0.5),
+                        width: 1.0,
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(isDark ? 0.25 : 0.05),
+                          blurRadius: 10,
+                          offset: const Offset(0, 3),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            const Text(
+                              '📍 Landmark Note (গাড়ির অবস্থান / গেট নম্বর)',
+                              style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.bold, color: Color(0xFFF59E0B)),
+                            ),
+                            if (_bikeLocation != null)
+                              GestureDetector(
+                                onTap: _resetBikeSpot,
+                                child: const Text(
+                                  'Clear Vehicle Spot',
+                                  style: TextStyle(fontSize: 11, color: Colors.redAccent, fontWeight: FontWeight.bold),
+                                ),
+                              ),
+                          ],
+                        ),
+                        const SizedBox(height: 6),
+                        TextField(
+                          controller: _noteController,
+                          style: const TextStyle(fontSize: 12),
+                          decoration: InputDecoration(
+                            hintText: 'e.g. Near Gate 3, opposite to roll stall, electric pole #42',
+                            hintStyle: TextStyle(fontSize: 11.5, color: isDark ? Colors.white38 : Colors.black38),
+                            isDense: true,
+                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                            contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ),
 
-              const SizedBox(height: 16),
+              const SizedBox(height: 14),
 
               // 5. ACTION BUTTONS
               SizedBox(
                 width: double.infinity,
-                height: 52,
+                height: 50,
                 child: ElevatedButton.icon(
                   onPressed: _parkBikeHere,
-                  icon: const Text('🏍️', style: TextStyle(fontSize: 20)),
+                  icon: const Text('🚗🏍️', style: TextStyle(fontSize: 18)),
                   label: const Text(
-                    'Park Bike Here (এখানে বাইক রাখুন)',
-                    style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
+                    'Park Vehicle Here (এখানে গাড়ি রাখুন)',
+                    style: TextStyle(fontSize: 14.5, fontWeight: FontWeight.bold),
                   ),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFFB91C1C),
                     foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                    elevation: 3,
                   ),
                 ),
               ),
@@ -603,19 +708,28 @@ class _HomeScreenState extends State<HomeScreen> {
                 const SizedBox(height: 10),
                 SizedBox(
                   width: double.infinity,
-                  height: 52,
+                  height: 50,
                   child: OutlinedButton.icon(
-                    onPressed: () {
-                      LocationService.launchWalkingNavigation(_bikeLocation!);
+                    onPressed: () async {
+                      final success = await LocationService.launchWalkingNavigation(_bikeLocation!);
+                      if (!success && mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Could not open Google Maps. Please install Google Maps or check internet.'),
+                            duration: Duration(seconds: 2),
+                          ),
+                        );
+                      }
                     },
-                    icon: const Icon(Icons.directions_walk, color: Color(0xFFF59E0B)),
+                    icon: const Icon(Icons.directions_walk, color: Color(0xFFF59E0B), size: 20),
                     label: const Text(
                       'Turn-by-Turn Walking Route (হেঁটে চলুন)',
-                      style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Color(0xFFF59E0B)),
+                      style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.bold, color: Color(0xFFF59E0B)),
                     ),
                     style: OutlinedButton.styleFrom(
+                      backgroundColor: isDark ? Colors.black.withOpacity(0.3) : Colors.white.withOpacity(0.4),
                       side: const BorderSide(color: Color(0xFFF59E0B), width: 1.5),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                     ),
                   ),
                 ),

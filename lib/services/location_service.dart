@@ -104,17 +104,54 @@ class LocationService {
 
   static double _degToRad(double degrees) => degrees * (math.pi / 180.0);
 
-  /// 100% Free Voice Walking Turn-by-Turn via native Google Maps
-  static Future<void> launchWalkingNavigation(LatLng destination) async {
+  /// 100% Free Turn-by-Turn Walking Route via native Google Maps or external browser
+  static Future<bool> launchWalkingNavigation(LatLng destination) async {
+    final lat = destination.latitude;
+    final lng = destination.longitude;
+
+    // 1. Google Navigation intent (launches Google Maps app directly in Turn-by-Turn walking mode)
+    final navUri = Uri.parse('google.navigation:q=$lat,$lng&mode=w');
+
+    // 2. Google Maps universal direction link with walking mode
+    final mapsWebUri = Uri.parse(
+      'https://www.google.com/maps/dir/?api=1&destination=$lat,$lng&travelmode=walking',
+    );
+
+    // 3. Fallback Geo URI
+    final geoUri = Uri.parse('geo:$lat,$lng?q=$lat,$lng');
+
+    // Attempt 1: Direct Google Maps navigation intent
     try {
-      final uri = Uri.parse(
-        'https://www.google.com/maps/dir/?api=1&destination=${destination.latitude},${destination.longitude}&travelmode=walking',
-      );
-      if (await canLaunchUrl(uri)) {
-        await launchUrl(uri, mode: LaunchMode.externalApplication);
-      }
+      final launched = await launchUrl(navUri, mode: LaunchMode.externalApplication);
+      if (launched) return true;
     } catch (e) {
-      debugPrint('Navigation launch error: $e');
+      debugPrint('Google navigation intent launch failed: $e');
     }
+
+    // Attempt 2: Universal Google Maps URL via external application (Maps app or browser)
+    try {
+      final launched = await launchUrl(mapsWebUri, mode: LaunchMode.externalApplication);
+      if (launched) return true;
+    } catch (e) {
+      debugPrint('Universal Google Maps URL external launch failed: $e');
+    }
+
+    // Attempt 3: Universal Google Maps URL via platform default
+    try {
+      final launched = await launchUrl(mapsWebUri, mode: LaunchMode.platformDefault);
+      if (launched) return true;
+    } catch (e) {
+      debugPrint('Universal Google Maps URL platform default launch failed: $e');
+    }
+
+    // Attempt 4: Geo URI
+    try {
+      final launched = await launchUrl(geoUri, mode: LaunchMode.externalApplication);
+      if (launched) return true;
+    } catch (e) {
+      debugPrint('Geo URI launch failed: $e');
+    }
+
+    return false;
   }
 }
