@@ -31,31 +31,7 @@ jobs:
         run: flutter create --platforms=android --org com.bikeparkgo .
 
       - name: Configure Android Permissions and MinSdk 21
-        run: |
-          python3 -c "
-          manifest_path = 'android/app/src/main/AndroidManifest.xml'
-          with open(manifest_path, 'r') as f:
-              content = f.read()
-          perms = '''
-    <uses-permission android:name=\"android.permission.INTERNET\"/>
-    <uses-permission android:name=\"android.permission.ACCESS_FINE_LOCATION\"/>
-    <uses-permission android:name=\"android.permission.ACCESS_COARSE_LOCATION\"/>
-    <uses-permission android:name=\"android.permission.CAMERA\"/>
-    <uses-permission android:name=\"android.permission.VIBRATE\"/>
-  '''
-          if 'ACCESS_FINE_LOCATION' not in content:
-              content = content.replace('<application', perms + '  <application')
-              with open(manifest_path, 'w') as f:
-                  f.write(content)
-
-          gradle_path = 'android/app/build.gradle'
-          with open(gradle_path, 'r') as f:
-              g_content = f.read()
-          g_content = g_content.replace('minSdkVersion = flutter.minSdkVersion', 'minSdkVersion = 21')
-          g_content = g_content.replace('minSdkVersion flutter.minSdkVersion', 'minSdkVersion 21')
-          with open(gradle_path, 'w') as f:
-              f.write(g_content)
-          "
+        run: python3 scripts/setup_android.py
 
       - name: Fetch Dependencies
         run: flutter pub get
