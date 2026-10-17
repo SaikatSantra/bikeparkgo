@@ -43,24 +43,30 @@ class _HomeScreenState extends State<HomeScreen> {
   void initState() {
     super.initState();
     _loadSavedBikeSpot();
-    _initGPS();
-    _loadPandals();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _initGPS();
+      _loadPandals();
+    });
   }
 
   Future<void> _loadPandals() async {
-    final list = await PandalService.getPandals();
-    if (mounted) {
-      setState(() {
-        _pandals = list;
-      });
-    }
+    try {
+      final list = await PandalService.getPandals();
+      if (mounted) {
+        setState(() {
+          _pandals = list;
+        });
+      }
+    } catch (_) {}
   }
 
   void _onSelectPandal(Pandal pandal) {
     setState(() {
       _selectedPandal = pandal;
     });
-    _mapController.move(LatLng(pandal.latitude, pandal.longitude), 16.5);
+    try {
+      _mapController.move(LatLng(pandal.latitude, pandal.longitude), 16.5);
+    } catch (_) {}
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         backgroundColor: const Color(0xFFB91C1C),
@@ -70,38 +76,59 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> _loadSavedBikeSpot() async {
-    final prefs = await SharedPreferences.getInstance();
-    final savedLat = prefs.getDouble('bike_lat');
-    final savedLng = prefs.getDouble('bike_lng');
-    final savedTime = prefs.getString('bike_time');
-    final savedNote = prefs.getString('bike_note');
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final savedLat = prefs.getDouble('bike_lat');
+      final savedLng = prefs.getDouble('bike_lng');
+      final savedTime = prefs.getString('bike_time');
+      final savedNote = prefs.getString('bike_note');
 
-    if (savedNote != null) _noteController.text = savedNote;
-    if (savedTime != null) setState(() => _parkedTime = savedTime);
+      if (savedNote != null) _noteController.text = savedNote;
+      if (savedTime != null && mounted) setState(() => _parkedTime = savedTime);
 
-    if (savedLat != null && savedLng != null) {
-      setState(() {
-        _bikeLocation = LatLng(savedLat, savedLng);
-      });
-      _updateCalculations();
-    }
+      if (savedLat != null && savedLng != null && mounted) {
+        setState(() {
+          _bikeLocation = LatLng(savedLat, savedLng);
+        });
+        _updateCalculations();
+      }
+    } catch (_) {}
   }
 
   Future<void> _initGPS() async {
-    final hasPermission = await LocationService.checkAndRequestPermission();
-    if (!hasPermission) {
-      setState(() => _gpsStatus = 'Location permission denied');
-      return;
-    }
+    try {
+      final hasPermission = await LocationService.checkAndRequestPermission();
+      if (!hasPermission) {
+        if (mounted) setState(() => _gpsStatus = 'Tap GPS to enable location');
+        return;
+      }
 
-    _positionSub = LocationService.getPositionStream().listen((pos) {
-      final newPos = LatLng(pos.latitude, pos.longitude);
-      setState(() {
-        _userLocation = newPos;
-        _gpsStatus = 'GPS Active (±${pos.accuracy.round()}m)';
+      // 1. Instantly get last known position without waiting for satellite lock
+      final quickPos = await LocationService.getInitialPosition();
+      if (quickPos != null && mounted) {
+        final newPos = LatLng(quickPos.latitude, quickPos.longitude);
+        setState(() {
+          _userLocation = newPos;
+          _gpsStatus = 'GPS Active (±${quickPos.accuracy.round()}m)';
+        });
+        _updateCalculations();
+      }
+
+      // 2. Start continuous streaming
+      _positionSub = LocationService.getPositionStream().listen((pos) {
+        if (!mounted) return;
+        final newPos = LatLng(pos.latitude, pos.longitude);
+        setState(() {
+          _userLocation = newPos;
+          _gpsStatus = 'GPS Active (±${pos.accuracy.round()}m)';
+        });
+        _updateCalculations();
+      }, onError: (err) {
+        if (mounted) setState(() => _gpsStatus = 'GPS weak signal');
       });
-      _updateCalculations();
-    });
+    } catch (e) {
+      if (mounted) setState(() => _gpsStatus = 'GPS unavailable');
+    }
   }
 
   void _updateCalculations() {

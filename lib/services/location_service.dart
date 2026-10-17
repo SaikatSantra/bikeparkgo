@@ -1,32 +1,64 @@
+import 'dart:async';
 import 'dart:math' as math;
+import 'package:flutter/foundation.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class LocationService {
-  /// Request location permissions with fallback guidance
+  /// Request location permissions safely without ever blocking the UI thread or throwing ANRs
   static Future<bool> checkAndRequestPermission() async {
-    bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
-    if (!serviceEnabled) {
-      return false;
-    }
+    try {
+      final serviceEnabled = await Geolocator.isLocationServiceEnabled()
+          .timeout(const Duration(seconds: 4), onTimeout: () => false);
 
-    LocationPermission permission = await Geolocator.checkPermission();
-    if (permission == LocationPermission.denied) {
-      permission = await Geolocator.requestPermission();
-      if (permission == LocationPermission.denied) {
+      if (!serviceEnabled) {
         return false;
       }
-    }
 
-    if (permission == LocationPermission.deniedForever) {
+      var permission = await Geolocator.checkPermission()
+          .timeout(const Duration(seconds: 4), onTimeout: () => LocationPermission.denied);
+
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission()
+            .timeout(const Duration(seconds: 8), onTimeout: () => LocationPermission.denied);
+        if (permission == LocationPermission.denied) {
+          return false;
+        }
+      }
+
+      if (permission == LocationPermission.deniedForever) {
+        return false;
+      }
+
+      return true;
+    } catch (e) {
+      debugPrint('Location permission check error: $e');
       return false;
     }
-
-    return true;
   }
 
-  /// Get continuous position updates
+  /// Get initial position quickly: first from cache, then with safe timeout fallback
+  static Future<Position?> getInitialPosition() async {
+    try {
+      // 1. Try cached last known position instantly
+      final lastKnown = await Geolocator.getLastKnownPosition();
+      if (lastKnown != null) {
+        return lastKnown;
+      }
+
+      // 2. Fallback to fresh position with strict 5-second timeout
+      return await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.medium,
+        timeLimit: const Duration(seconds: 5),
+      );
+    } catch (e) {
+      debugPrint('Initial position lookup error: $e');
+      return null;
+    }
+  }
+
+  /// Get continuous position updates with safe error handling
   static Stream<Position> getPositionStream() {
     return Geolocator.getPositionStream(
       locationSettings: const LocationSettings(
@@ -74,12 +106,15 @@ class LocationService {
 
   /// 100% Free Voice Walking Turn-by-Turn via native Google Maps
   static Future<void> launchWalkingNavigation(LatLng destination) async {
-    final uri = Uri.parse(
-      'https://www.google.com/maps/dir/?api=1&destination=${destination.latitude},${destination.longitude}&travelmode=walking',
-    );
-    if (await canLaunchUrl(uri)) {
-      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    try {
+      final uri = Uri.parse(
+        'https://www.google.com/maps/dir/?api=1&destination=${destination.latitude},${destination.longitude}&travelmode=walking',
+      );
+      if (await canLaunchUrl(uri)) {
+        await launchUrl(uri, mode: LaunchMode.externalApplication);
+      }
+    } catch (e) {
+      debugPrint('Navigation launch error: $e');
     }
   }
 }
-

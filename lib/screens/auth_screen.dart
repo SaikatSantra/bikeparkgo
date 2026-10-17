@@ -98,15 +98,20 @@ class _AuthScreenState extends State<AuthScreen> {
       isGuest: _isGuestMode,
     );
 
-    // 1. Sync User Details & Profile Picture to Google Drive
-    final syncResult = await GoogleDriveService.syncUserToGoogleDrive(profile);
+    try {
+      // 1. Sync User Details & Profile Picture to Google Drive (with safe timeout)
+      await GoogleDriveService.syncUserToGoogleDrive(profile)
+          .timeout(const Duration(seconds: 5), onTimeout: () => {'success': false});
 
-    // 2. Save profile in SharedPreferences for persistent offline login
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('bikeparkgo_user', jsonEncode(profile.toJson()));
-    await prefs.setBool('bikeparkgo_logged_in', true);
+      // 2. Save profile in SharedPreferences for persistent offline login
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('bikeparkgo_user', jsonEncode(profile.toJson()));
+      await prefs.setBool('bikeparkgo_logged_in', true);
+    } catch (e) {
+      debugPrint('Sync / local save notice: $e');
+    }
 
-    setState(() => _isLoading = false);
+    if (mounted) setState(() => _isLoading = false);
 
     if (mounted) {
       // Show requested heartfelt festive welcome popup
