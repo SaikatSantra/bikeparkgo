@@ -27,11 +27,34 @@ jobs:
           channel: 'stable'
           cache: true
 
+      - name: Generate Official Android Project with Wrapper
+        run: |
+          flutter create --platforms=android --org com.bikeparkgo .
+          chmod +x android/gradlew
+
+      - name: Configure Android Permissions and MinSdk 21
+        run: |
+          sed -i 's/<application/    <uses-permission android:name="android.permission.INTERNET"\/>\n    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"\/>\n    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION"\/>\n    <uses-permission android:name="android.permission.CAMERA"\/>\n    <uses-permission android:name="android.permission.VIBRATE"\/>\n    <application/' android/app/src/main/AndroidManifest.xml
+          sed -i 's/minSdkVersion = flutter.minSdkVersion/minSdkVersion = 21/g' android/app/build.gradle
+          sed -i 's/minSdkVersion flutter.minSdkVersion/minSdkVersion 21/g' android/app/build.gradle
+
       - name: Fetch Dependencies
         run: flutter pub get
 
       - name: Build Release APK
-        run: flutter build apk --release --no-tree-shake-icons --verbose
+        id: build_apk
+        run: |
+          flutter build apk --release --no-tree-shake-icons --verbose 2>&1 | tee build_log.txt
+        continue-on-error: true
+
+      - name: Check Build Result
+        if: steps.build_apk.outcome != 'success'
+        run: |
+          echo "### ❌ Build Failure Log (Last 100 lines):" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          tail -n 100 build_log.txt >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          exit 1
 
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
