@@ -5,6 +5,9 @@ on:
     branches: [ main, master ]
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   build:
     name: Build Production Android APK
@@ -23,52 +26,71 @@ jobs:
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.24.x'
           channel: 'stable'
           cache: true
+
+      - name: Verify Toolchain
+        run: |
+          java -version
+          flutter --version
 
       - name: Generate Official Android Project with Wrapper
         run: |
           flutter create --platforms=android --org com.bikeparkgo .
           chmod +x android/gradlew
 
-      - name: Configure Android Permissions and MinSdk 21
-        run: |
-          sed -i 's/<application/    <uses-permission android:name="android.permission.INTERNET"\/>\n    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"\/>\n    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION"\/>\n    <uses-permission android:name="android.permission.CAMERA"\/>\n    <uses-permission android:name="android.permission.VIBRATE"\/>\n    <application/' android/app/src/main/AndroidManifest.xml
-          sed -i 's/minSdkVersion = flutter.minSdkVersion/minSdkVersion = 21/g' android/app/build.gradle
-          sed -i 's/minSdkVersion flutter.minSdkVersion/minSdkVersion 21/g' android/app/build.gradle
+      - name: Configure Android Project
+        run: node scripts/configure_android.js
 
       - name: Fetch Dependencies
         run: flutter pub get
 
+      - name: Patch Legacy Plugins in Pub Cache
+        run: |
+          echo "Patching any legacy android.flutter references in pub-cache..."
+          find ~/.pub-cache -name "build.gradle" -exec sed -i 's/android.flutter.compileSdkVersion/35/g' {} + 2>/dev/null || true
+          find ~/.pub-cache -name "build.gradle" -exec sed -i 's/android.flutter.minSdkVersion/21/g' {} + 2>/dev/null || true
+          find ~/.pub-cache -name "build.gradle" -exec sed -i 's/android.flutter.targetSdkVersion/35/g' {} + 2>/dev/null || true
+          echo "✓ Pub cache patch complete"
+
       - name: Build Release APK
-        id: build_apk
         run: |
-          flutter build apk --release --no-tree-shake-icons --verbose 2>&1 | tee build_log.txt
-        continue-on-error: true
+          flutter build apk --release --no-tree-shake-icons
 
-      - name: Check Build Result
-        if: steps.build_apk.outcome != 'success'
+      - name: Verify and Package APK
         run: |
-          echo "### ❌ Build Failure Log (Last 100 lines):" >> $GITHUB_STEP_SUMMARY
-          echo '```' >> $GITHUB_STEP_SUMMARY
-          tail -n 100 build_log.txt >> $GITHUB_STEP_SUMMARY
-          echo '```' >> $GITHUB_STEP_SUMMARY
-          exit 1
-
-      - name: Locate and Copy APK
-        run: |
-          tail -n 25 build_log.txt
           mkdir -p release-apk
-          for f in $(find . -name "*.apk"); do
-            echo "Found APK: $f"
-            cp -v "$f" release-apk/
-          done
-          ls -la release-apk/
+          cp build/app/outputs/flutter-apk/app-release.apk release-apk/BikeParkGo-release.apk
+          echo "### 📦 Generated APK:"
+          ls -lh release-apk/BikeParkGo-release.apk
 
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
         with:
           name: BikeParkGo-Release-APK
-          path: release-apk/*.apk
-          if-no-files-found: warn
+          path: release-apk/BikeParkGo-release.apk
+          if-no-files-found: error
+
+      - name: Create or Update GitHub Release
+        uses: softprops/action-gh-release@v2
+        if: github.ref == 'refs/heads/main'
+        with:
+          tag_name: v1.0.0
+          name: "BikeParkGo v1.0.0 Production APK"
+          body: |
+            ## 🏍️ BikeParkGo (PujoBike) - Production Release
+            **Durga Puja Safe Bike Parking Tracker with Day/Night Mode and Cloud Sync**
+
+            ### 🚀 Features Included:
+            - **🌓 Day / Night Festive Aesthetics**: High-contrast Durga Puja colors (Sindoor Crimson, Marigold Gold, Midnight Sky).
+            - **👤 Customer Login & Guest Checkout**: Photo capture + automated Google Drive backup.
+            - **📍 High-Accuracy GPS & Rotating Compass**: Haversine distance counter + arrow pointing straight to your bike.
+            - **🗣️ Turn-by-Turn Walking Navigation**: Native walking directions deep link without paid API keys.
+            - **100% Free**: Zero subscription fees, zero paid Google Maps API keys.
+
+            ### 📲 Direct APK Download:
+            Download **[BikeParkGo-release.apk](https://github.com/SaikatSantra/bikeparkgo/releases/download/v1.0.0/BikeParkGo-release.apk)** to install directly on your Android phone.
+          files: release-apk/BikeParkGo-release.apk
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        continue-on-error: true
