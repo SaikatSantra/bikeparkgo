@@ -1,0 +1,37 @@
+name: bikeparkgo
+description: Durga Puja Safe Bike Parking Tracker with Day/Night Mode and Secure Cloud Sync.
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # UI & State Management
+  provider: ^6.1.1
+  google_fonts: ^6.1.0
+
+  # 100% Free OpenStreetMap & Location
+  flutter_map: ^6.1.0
+  latlong2: ^0.9.0
+  geolocator: ^11.0.0
+
+  # Profile Picture Capture
+  image_picker: ^1.0.7
+
+  # Secure Storage & HTTP Sync
+  http: ^1.2.0
+  shared_preferences: ^2.2.2
+  url_launcher: ^6.2.5
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^3.0.0
+
+flutter:
+  uses-material-design: true
+
