@@ -1,5 +1,4 @@
-<manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    package="com.bikeparkgo.app">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
     <!-- Permissions for GPS Location, Camera, & Cloud Sync -->
     <uses-permission android:name="android.permission.INTERNET"/>
@@ -34,4 +33,3 @@
             android:value="2" />
     </application>
 </manifest>
-

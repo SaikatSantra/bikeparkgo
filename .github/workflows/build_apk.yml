@@ -27,12 +27,6 @@ jobs:
           channel: 'stable'
           cache: true
 
-      - name: Generate Official Android Project
-        run: flutter create --platforms=android --org com.bikeparkgo .
-
-      - name: Configure Android Permissions and MinSdk 21
-        run: python3 scripts/setup_android.py
-
       - name: Fetch Dependencies
         run: flutter pub get
 
