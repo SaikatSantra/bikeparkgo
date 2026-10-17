@@ -1,21 +1,129 @@
 /**
- * bikeparkgo - SECURE GOOGLE DRIVE REGISTRATION WEBHOOK
+ * bikeparkgo - SECURE GOOGLE DRIVE REGISTRATION & PANDAL MANAGEMENT WEBHOOK
  * 
- * Top-Notch Security Architecture:
- * 1. Zero Client Secrets: No Google Cloud service account keys are embedded in the mobile APK.
- * 2. Secret Token Authentication: Rejects unauthorized requests with 401 Unauthorized.
- * 3. Folder Sanitization: Removes dangerous characters to prevent directory injection.
+ * Top-Notch Architecture:
+ * 1. Zero Client Secrets: No Google Cloud service account keys embedded in client app.
+ * 2. Secret Token Authentication for POST requests.
+ * 3. GET /?action=get_pandals: Reads or creates 'pandals.json' in Google Drive root folder 'BikeParkGo_Users'
+ *    so the owner can add, edit, or update pandals and their images directly from their Google Drive!
  * 4. Automatic Folder & File Structure:
  *    Root: BikeParkGo_Users/
+ *       ├── pandals.json (Manageable by owner anytime)
  *       └── <User_Name>_<Phone_Number>/
- *            ├── user_details.txt  (Name, Email, Phone, Time, Mode)
+ *            ├── user_details.txt
  *            └── profile_picture.jpg
  */
 
-// CHANGE THIS TO YOUR SECURE SECRET KEY (Must match secretKey in Flutter app)
-const API_SECRET_TOKEN = "BikeParkGo_SecureToken_2026_Trishul";
+const API_SECRET_TOKEN = "PujoBike_SecureToken_2026_Trishul";
 const ROOT_FOLDER_NAME = "BikeParkGo_Users";
 
+/**
+ * Handle GET Requests: Dynamic Pandal Slider managed from Google Drive
+ */
+function doGet(e) {
+  try {
+    const action = (e && e.parameter && e.parameter.action) ? e.parameter.action : "get_pandals";
+
+    if (action === "get_pandals") {
+      const rootFolder = getOrCreateFolder(DriveApp.getRootFolder(), ROOT_FOLDER_NAME);
+      const files = rootFolder.getFilesByName("pandals.json");
+      
+      let pandals = [];
+      if (files.hasNext()) {
+        const file = files.next();
+        const content = file.getBlob().getDataAsString();
+        pandals = JSON.parse(content);
+      } else {
+        // Initialize default pandals in Google Drive so owner can edit them
+        pandals = [
+          {
+            id: "sree_bhumi",
+            name: "শ্রীভূমি স্পোর্টিং ক্লাব",
+            nameEn: "Sree Bhumi Sporting Club",
+            zone: "Lake Town / VIP Road",
+            tag: "👑 Royal Palace Theme",
+            crowd: "🔥 Very Crowded",
+            imageUrl: "https://images.unsplash.com/photo-1601050690597-df0568f70950?w=800&auto=format&fit=crop&q=80",
+            lat: 22.5976,
+            lng: 88.3969,
+            parkingTip: "Park near Clock Tower service lane Gate 2"
+          },
+          {
+            id: "bagbazar",
+            name: "বাগবাজার সর্বজনীন",
+            nameEn: "Bagbazar Sarbojanin",
+            zone: "North Kolkata (Ghat)",
+            tag: "🏮 100+ Years Heritage Sabeki",
+            crowd: "✨ High Flow",
+            imageUrl: "https://images.unsplash.com/photo-1579783902614-a3fb3927b675?w=800&auto=format&fit=crop&q=80",
+            lat: 22.6022,
+            lng: 88.3683,
+            parkingTip: "Circular Railway road bike zone near Ghat"
+          },
+          {
+            id: "college_square",
+            name: "কলেজ স্কয়ার সর্বজনীন",
+            nameEn: "College Square Sarbojanin",
+            zone: "Central Kolkata",
+            tag: "💡 Lake Illumination",
+            crowd: "🌊 Very Crowded",
+            imageUrl: "https://images.unsplash.com/photo-1509198397868-475647b2a1e5?w=800&auto=format&fit=crop&q=80",
+            lat: 22.5765,
+            lng: 88.3644,
+            parkingTip: "Bidhan Sarani designated two-wheeler lane"
+          },
+          {
+            id: "mohammad_ali_park",
+            name: "মহম্মদ আলী পার্ক",
+            nameEn: "Mohammad Ali Park",
+            zone: "MG Road Central",
+            tag: "🏰 Monumental Replica",
+            crowd: "🔥 Heavy Crowd",
+            imageUrl: "https://images.unsplash.com/photo-1544717305-2782549b5136?w=800&auto=format&fit=crop&q=80",
+            lat: 22.5802,
+            lng: 88.3601,
+            parkingTip: "Central Avenue service parking spot #3"
+          },
+          {
+            id: "ekdalia",
+            name: "একডালিয়া এভারগ্রিন",
+            nameEn: "Ekdalia Evergreen Club",
+            zone: "Gariahat, South Kolkata",
+            tag: "🏛️ South Indian Temple",
+            crowd: "✨ Moderate Flow",
+            imageUrl: "https://images.unsplash.com/photo-1567157577867-05ccb1388e66?w=800&auto=format&fit=crop&q=80",
+            lat: 22.5186,
+            lng: 88.3659,
+            parkingTip: "Gariahat Flyover underpass bike stand"
+          },
+          {
+            id: "suruchi_sangha",
+            name: "সুরুচি সংঘ",
+            nameEn: "Suruchi Sangha",
+            zone: "New Alipore, South Kolkata",
+            tag: "🎨 Cultural Showcase",
+            crowd: "🔥 Very Crowded",
+            imageUrl: "https://images.unsplash.com/photo-1514565131-fce0801e5785?w=800&auto=format&fit=crop&q=80",
+            lat: 22.5132,
+            lng: 88.3341,
+            parkingTip: "New Alipore Petrol pump adjacent parking lane"
+          }
+        ];
+        rootFolder.createFile("pandals.json", JSON.stringify(pandals, null, 2), "application/json");
+      }
+
+      return responseJSON({ success: true, pandals: pandals }, 200);
+    }
+
+    return responseJSON({ success: false, message: "Invalid action" }, 400);
+  } catch (err) {
+    return responseJSON({ success: false, error: err.toString() }, 500);
+  }
+}
+
+/**
+ * Handle POST Requests: User Registration and Profile Photo Upload
+ */
 function doPost(e) {
   try {
     if (!e || !e.postData || !e.postData.contents) {
@@ -75,7 +183,6 @@ function doPost(e) {
 
     // 7. Save Profile Picture if provided
     if (base64Photo && base64Photo.length > 50) {
-      // Strip data URI prefix if present (e.g. data:image/jpeg;base64,...)
       const cleanedBase64 = base64Photo.replace(/^data:image\/\w+;base64,/, "");
       const decodedBytes = Utilities.base64Decode(cleanedBase64);
       const imageBlob = Utilities.newBlob(decodedBytes, "image/jpeg", "profile_picture.jpg");
@@ -113,4 +220,3 @@ function responseJSON(obj, statusCode) {
   output.setMimeType(ContentService.MimeType.JSON);
   return output;
 }
-

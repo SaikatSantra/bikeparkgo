@@ -41,8 +41,14 @@ jobs:
           flutter create --platforms=android --org com.bikeparkgo .
           chmod +x android/gradlew
 
-      - name: Configure Android Project
-        run: node scripts/configure_android.js
+      - name: Generate Production Keystore
+        run: |
+          keytool -genkey -v -keystore android/app/upload-keystore.jks -alias upload -keyalg RSA -keysize 2048 -validity 10000 -storepass bikeparkgo123 -keypass bikeparkgo123 -dname "CN=BikeParkGo, OU=PujoBike, O=Saitriq, L=Kolkata, ST=WestBengal, C=IN"
+
+      - name: Generate App Icons & Configure Android
+        run: |
+          node scripts/generate_icons.js
+          node scripts/configure_android.js
 
       - name: Fetch Dependencies
         run: flutter pub get
@@ -52,7 +58,7 @@ jobs:
           echo "Patching any legacy android.flutter references in pub-cache..."
           find ~/.pub-cache -name "build.gradle" -exec sed -i 's/android.flutter.compileSdkVersion/35/g' {} + 2>/dev/null || true
           find ~/.pub-cache -name "build.gradle" -exec sed -i 's/android.flutter.minSdkVersion/21/g' {} + 2>/dev/null || true
-          find ~/.pub-cache -name "build.gradle" -exec sed -i 's/android.flutter.targetSdkVersion/35/g' {} + 2>/dev/null || true
+          find ~/.pub-cache -name "build.gradle" -exec sed -i 's/android.flutter.targetSdkVersion/34/g' {} + 2>/dev/null || true
           echo "✓ Pub cache patch complete"
 
       - name: Build Release APK
@@ -100,10 +106,13 @@ jobs:
             **Durga Puja Safe Bike Parking Tracker with Day/Night Mode and Cloud Sync**
 
             ### 🚀 Features Included:
-            - **🌓 Day / Night Festive Aesthetics**: High-contrast Durga Puja colors (Sindoor Crimson, Marigold Gold, Midnight Sky).
-            - **👤 Customer Login & Guest Checkout**: Photo capture + automated Google Drive backup.
-            - **📍 High-Accuracy GPS & Rotating Compass**: Haversine distance counter + arrow pointing straight to your bike.
-            - **🗣️ Turn-by-Turn Walking Navigation**: Native walking directions deep link without paid API keys.
+            - **🎪 Dynamic Pandal Slider**: Interactive carousel with top Kolkata pandals managed directly from Google Drive.
+            - **🎨 Festive Redesign & App Logo**: Custom Durga Puja Trishul & Bike launcher icon with Sindoor & Gold themes.
+            - **🌓 Day / Night Mode**: High-contrast Puja aesthetics for bright daylight and night pandal hopping.
+            - **👤 Customer Login & Guest Checkout**: Photo capture + Google Drive sync with welcoming motto:
+              *"Enjoy Pujo, you care for your dear ones, I care for your vehicles!"*
+            - **📍 High-Accuracy GPS & Rotating Radar**: Haversine distance counter + arrow pointing straight to your bike.
+            - **🗣️ Turn-by-Turn Walking Navigation**: Native walking directions without paid API keys.
             - **100% Free**: Zero subscription fees, zero paid Google Maps API keys.
 
             ### 📲 Direct APK Download:

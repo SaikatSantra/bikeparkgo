@@ -7,7 +7,10 @@ import 'package:latlong2/latlong.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/user_profile.dart';
+import '../models/pandal.dart';
 import '../services/location_service.dart';
+import '../services/pandal_service.dart';
+import '../widgets/pandal_slider.dart';
 import '../theme/app_theme.dart';
 import 'auth_screen.dart';
 
@@ -33,11 +36,37 @@ class _HomeScreenState extends State<HomeScreen> {
   double _bearingDegrees = 0.0;
   String _gpsStatus = 'Connecting GPS...';
 
+  List<Pandal> _pandals = [];
+  Pandal? _selectedPandal;
+
   @override
   void initState() {
     super.initState();
     _loadSavedBikeSpot();
     _initGPS();
+    _loadPandals();
+  }
+
+  Future<void> _loadPandals() async {
+    final list = await PandalService.getPandals();
+    if (mounted) {
+      setState(() {
+        _pandals = list;
+      });
+    }
+  }
+
+  void _onSelectPandal(Pandal pandal) {
+    setState(() {
+      _selectedPandal = pandal;
+    });
+    _mapController.move(LatLng(pandal.latitude, pandal.longitude), 16.5);
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        backgroundColor: const Color(0xFFB91C1C),
+        content: Text('🎪 Showing ${pandal.name} on map!'),
+      ),
+    );
   }
 
   Future<void> _loadSavedBikeSpot() async {
@@ -89,7 +118,7 @@ class _HomeScreenState extends State<HomeScreen> {
   Future<void> _parkBikeHere() async {
     if (_userLocation == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Acquiring GPS location. Please wait 3 seconds!')),
+        const SnackBar(content: Text('Acquiring GPS location. Please wait a moment!')),
       );
       return;
     }
@@ -112,7 +141,7 @@ class _HomeScreenState extends State<HomeScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           backgroundColor: Color(0xFF15803D),
-          content: Text('🎉 বাইকের লোকেশন সেভ হয়েছে! (Bike parking saved!)'),
+          content: Text('🔒 Bike parked successfully! Safe Pujo hopping!'),
         ),
       );
     }
@@ -122,13 +151,14 @@ class _HomeScreenState extends State<HomeScreen> {
     final confirm = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Reset Parking Spot?'),
-        content: const Text('Are you sure you want to clear your saved bike location?'),
+        title: const Text('Clear Bike Spot?'),
+        content: const Text('Are you sure you want to clear your current parked bike location?'),
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
-          TextButton(
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
             onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Reset', style: TextStyle(color: Colors.red)),
+            child: const Text('Clear', style: TextStyle(color: Colors.white)),
           ),
         ],
       ),
@@ -144,17 +174,17 @@ class _HomeScreenState extends State<HomeScreen> {
       setState(() {
         _bikeLocation = null;
         _parkedTime = 'Not Parked Yet';
-        _noteController.clear();
         _distanceMeters = 0.0;
         _bearingDegrees = 0.0;
+        _noteController.clear();
       });
     }
   }
 
   Future<void> _logout() async {
     final prefs = await SharedPreferences.getInstance();
+    await prefs.remove('bikeparkgo_logged_in');
     await prefs.remove('bikeparkgo_user');
-    await prefs.setBool('bikeparkgo_logged_in', false);
 
     if (mounted) {
       Navigator.pushReplacement(
@@ -181,16 +211,33 @@ class _HomeScreenState extends State<HomeScreen> {
       appBar: AppBar(
         title: Row(
           children: [
-            const Text('🔱 ', style: TextStyle(fontSize: 22)),
+            Container(
+              margin: const EdgeInsets.only(right: 10),
+              width: 38,
+              height: 38,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                border: Border.all(color: const Color(0xFFF59E0B), width: 1.5),
+              ),
+              child: ClipOval(
+                child: Image.asset(
+                  'assets/images/app_logo.png',
+                  fit: BoxFit.cover,
+                  errorBuilder: (_, __, ___) => const Center(
+                    child: Text('🔱', style: TextStyle(fontSize: 20)),
+                  ),
+                ),
+              ),
+            ),
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Text(
                   'BikeParkGo',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, letterSpacing: 0.5),
+                  style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold, letterSpacing: 0.5),
                 ),
                 Text(
-                  'User: ${widget.userProfile.name} (${widget.userProfile.isGuest ? "Guest" : "Member"})',
+                  '🌸 শুভ শারদীয়া • ${widget.userProfile.name}',
                   style: const TextStyle(fontSize: 10, color: Color(0xFFFEF08A)),
                 ),
               ],
@@ -240,10 +287,63 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
       body: SafeArea(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
           child: Column(
             children: [
-              // 1. RADAR & DISTANCE CARD
+              // 0. FESTIVE GREETING & MOTTO BANNER
+              Container(
+                margin: const EdgeInsets.only(bottom: 12),
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: isDark
+                        ? [const Color(0xFF450A0A), const Color(0xFF1E1B4B)]
+                        : [const Color(0xFFFEF2F2), const Color(0xFFFFFBEB)],
+                  ),
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(
+                    color: const Color(0xFFF59E0B).withOpacity(0.4),
+                    width: 1.2,
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    const Text('🌸', style: TextStyle(fontSize: 22)),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Welcome, ${widget.userProfile.name}!',
+                            style: TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.bold,
+                              color: isDark ? const Color(0xFFFDE68A) : const Color(0xFFB91C1C),
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          const Text(
+                            '“Enjoy Pujo, you care for your dear ones, I care for your vehicles!”',
+                            style: TextStyle(fontSize: 11, fontStyle: FontStyle.italic, color: Colors.grey),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              // 1. PANDAL SLIDER CAROUSEL (MANAGED FROM GOOGLE DRIVE)
+              if (_pandals.isNotEmpty) ...[
+                PandalSlider(
+                  pandals: _pandals,
+                  onSelectPandal: _onSelectPandal,
+                ),
+                const SizedBox(height: 12),
+              ],
+
+              // 2. RADAR & DISTANCE CARD
               Card(
                 child: Padding(
                   padding: const EdgeInsets.all(16),
@@ -300,22 +400,34 @@ class _HomeScreenState extends State<HomeScreen> {
                                   color: Color(0xFFF59E0B),
                                 ),
                               ),
-                              Text(_gpsStatus, style: const TextStyle(fontSize: 10, color: Colors.grey)),
+                              Text(
+                                _gpsStatus,
+                                style: const TextStyle(fontSize: 10, color: Colors.green),
+                              ),
                             ],
                           ),
-                          // Rotating Directional Compass Needle
+                          // Rotating Arrow Radar / Compass
                           Container(
-                            width: 68,
-                            height: 68,
+                            width: 84,
+                            height: 84,
                             decoration: BoxDecoration(
                               shape: BoxShape.circle,
-                              color: const Color(0xFFB91C1C).withOpacity(0.12),
+                              gradient: RadialGradient(
+                                colors: [
+                                  const Color(0xFFB91C1C).withOpacity(0.25),
+                                  const Color(0xFFB91C1C).withOpacity(0.05),
+                                ],
+                              ),
                               border: Border.all(color: const Color(0xFFF59E0B), width: 1.5),
                             ),
                             child: Center(
                               child: Transform.rotate(
-                                angle: _bearingDegrees * (3.1415926535 / 180),
-                                child: const Text('🏹', style: TextStyle(fontSize: 32)),
+                                angle: (_bearingDegrees * 3.141592653589793 / 180),
+                                child: const Icon(
+                                  Icons.navigation,
+                                  size: 42,
+                                  color: Color(0xFFDC2626),
+                                ),
                               ),
                             ),
                           ),
@@ -328,24 +440,23 @@ class _HomeScreenState extends State<HomeScreen> {
 
               const SizedBox(height: 12),
 
-              // 2. 100% FREE OPENSTREETMAP VIEW
+              // 3. OPENSTREETMAP LEAFLET VIEW (100% FREE)
               Card(
                 clipBehavior: Clip.antiAlias,
                 child: SizedBox(
-                  height: 240,
+                  height: 230,
                   child: Stack(
                     children: [
                       FlutterMap(
                         mapController: _mapController,
                         options: MapOptions(
-                          initialCenter: _userLocation ?? const LatLng(22.5726, 88.3639), // Kolkata default
-                          initialZoom: 16,
+                          initialCenter: _userLocation ?? const LatLng(22.5726, 88.3639),
+                          initialZoom: 15.5,
                         ),
                         children: [
                           TileLayer(
-                            urlTemplate: 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
-                            subdomains: const ['a', 'b', 'c', 'd'],
-                            userAgentPackageName: 'com.bikeparkgo.app',
+                            urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                            userAgentPackageName: 'com.bikeparkgo.bikeparkgo',
                           ),
                           MarkerLayer(
                             markers: [
@@ -368,6 +479,13 @@ class _HomeScreenState extends State<HomeScreen> {
                                   width: 36,
                                   height: 36,
                                   child: const Text('🏍️', style: TextStyle(fontSize: 26)),
+                                ),
+                              if (_selectedPandal != null)
+                                Marker(
+                                  point: LatLng(_selectedPandal!.latitude, _selectedPandal!.longitude),
+                                  width: 38,
+                                  height: 38,
+                                  child: const Text('🎪', style: TextStyle(fontSize: 28)),
                                 ),
                             ],
                           ),
@@ -394,7 +512,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
               const SizedBox(height: 12),
 
-              // 3. LANDMARK NOTE CARD
+              // 4. LANDMARK NOTE CARD
               Card(
                 child: Padding(
                   padding: const EdgeInsets.all(14),
@@ -435,7 +553,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
               const SizedBox(height: 16),
 
-              // 4. ACTION BUTTONS
+              // 5. ACTION BUTTONS
               SizedBox(
                 width: double.infinity,
                 height: 52,
@@ -448,31 +566,35 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFFB91C1C),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                   ),
                 ),
               ),
 
-              const SizedBox(height: 10),
-
-              SizedBox(
-                width: double.infinity,
-                height: 48,
-                child: OutlinedButton.icon(
-                  onPressed: _bikeLocation == null
-                      ? null
-                      : () => LocationService.launchWalkingNavigation(_bikeLocation!),
-                  icon: const Icon(Icons.directions_walk, color: Color(0xFFF59E0B)),
-                  label: const Text(
-                    'Free Turn-by-Turn Voice Navigation',
-                    style: TextStyle(fontWeight: FontWeight.bold),
-                  ),
-                  style: OutlinedButton.styleFrom(
-                    side: const BorderSide(color: Color(0xFFF59E0B)),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+              if (_bikeLocation != null) ...[
+                const SizedBox(height: 10),
+                SizedBox(
+                  width: double.infinity,
+                  height: 52,
+                  child: OutlinedButton.icon(
+                    onPressed: () {
+                      LocationService.launchWalkingNavigation(_bikeLocation!);
+                    },
+                    icon: const Icon(Icons.directions_walk, color: Color(0xFFF59E0B)),
+                    label: const Text(
+                      'Turn-by-Turn Walking Route (হেঁটে চলুন)',
+                      style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Color(0xFFF59E0B)),
+                    ),
+                    style: OutlinedButton.styleFrom(
+                      side: const BorderSide(color: Color(0xFFF59E0B), width: 1.5),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
                   ),
                 ),
-              ),
+              ],
+
+              const SizedBox(height: 24),
             ],
           ),
         ),
@@ -480,4 +602,3 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 }
-

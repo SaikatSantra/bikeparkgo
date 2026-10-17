@@ -109,21 +109,90 @@ class _AuthScreenState extends State<AuthScreen> {
     setState(() => _isLoading = false);
 
     if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          backgroundColor: const Color(0xFF15803D),
-          content: Text(
-            syncResult['success'] == true
-                ? '🌸 শুভ শারদীয়া! Welcome ${profile.name}'
-                : '🌸 Saved locally: ${syncResult['message']}',
+      // Show requested heartfelt festive welcome popup
+      await showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (ctx) => AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+            side: const BorderSide(color: Color(0xFFF59E0B), width: 1.5),
           ),
+          backgroundColor: Theme.of(context).brightness == Brightness.dark
+              ? const Color(0xFF131A2A)
+              : const Color(0xFFFFFDF9),
+          title: Row(
+            children: [
+              const Text('🌸', style: TextStyle(fontSize: 24)),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'Welcome, ${profile.name}!',
+                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+                ),
+              ),
+            ],
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFB91C1C).withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: const Color(0xFFF59E0B).withOpacity(0.3)),
+                ),
+                child: const Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '“Enjoy Pujo, you care for your dear ones, I care for your vehicles!”',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFFDC2626),
+                      ),
+                    ),
+                    SizedBox(height: 6),
+                    Text(
+                      'পুজো আনন্দ উপভোগ করুন, আপনি আপনজনদের খেয়াল রাখুন, আপনার গাড়ির খেয়াল আমি রাখব!',
+                      style: TextStyle(fontSize: 12, color: Colors.grey),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 12),
+              const Row(
+                children: [
+                  Icon(Icons.check_circle, color: Color(0xFF16A34A), size: 16),
+                  SizedBox(width: 6),
+                  Text('Bike Tracker & Radar Ready', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                ],
+              ),
+            ],
+          ),
+          actions: [
+            ElevatedButton(
+              onPressed: () => Navigator.pop(ctx),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFFB91C1C),
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              ),
+              child: const Text('Start Exploring (শুরু করুন) ➔', style: TextStyle(fontWeight: FontWeight.bold)),
+            ),
+          ],
         ),
       );
 
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (context) => HomeScreen(userProfile: profile)),
-      );
+      if (mounted) {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => HomeScreen(userProfile: profile)),
+        );
+      }
     }
   }
 
@@ -151,17 +220,33 @@ class _AuthScreenState extends State<AuthScreen> {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  // Festive Emblem
+                  // Festive App Logo
                   Container(
-                    width: 72,
-                    height: 72,
+                    width: 88,
+                    height: 88,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
-                      color: const Color(0xFFB91C1C).withOpacity(0.15),
-                      border: Border.all(color: const Color(0xFFF59E0B), width: 2),
+                      boxShadow: [
+                        BoxShadow(
+                          color: const Color(0xFFF59E0B).withOpacity(0.35),
+                          blurRadius: 18,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
                     ),
-                    child: const Center(
-                      child: Text('🔱', style: TextStyle(fontSize: 36)),
+                    child: ClipOval(
+                      child: Image.asset(
+                        'assets/images/app_logo.png',
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, __, ___) => Container(
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: const Color(0xFFB91C1C).withOpacity(0.15),
+                            border: Border.all(color: const Color(0xFFF59E0B), width: 2),
+                          ),
+                          child: const Center(child: Text('🔱', style: TextStyle(fontSize: 40))),
+                        ),
+                      ),
                     ),
                   ),
                   const SizedBox(height: 12),
@@ -371,7 +456,7 @@ class _AuthScreenState extends State<AuthScreen> {
                                   child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
                                 ),
                                 SizedBox(width: 12),
-                                Text('Securing User to Drive...'),
+                                Text('Preparing Safe Parking ➔'),
                               ],
                             )
                           : Text(
@@ -383,7 +468,7 @@ class _AuthScreenState extends State<AuthScreen> {
 
                   const SizedBox(height: 16),
                   const Text(
-                    '🔒 End-to-end Encrypted • Direct Google Drive Storage',
+                    '🌸 Enjoy Pujo with Peace of Mind • 100% Free Bike Tracker',
                     style: TextStyle(fontSize: 11, color: Colors.grey),
                   ),
                 ],

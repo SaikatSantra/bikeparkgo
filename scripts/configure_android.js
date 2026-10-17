@@ -3,10 +3,38 @@ const path = require('path');
 
 console.log('--- Configuring Android Project for Production Build ---');
 
-// 1. AndroidManifest.xml: Inject permissions
+// Helper: Copy directory contents recursively
+function copyDirSync(src, dest) {
+  if (!fs.existsSync(src)) return;
+  fs.mkdirSync(dest, { recursive: true });
+  const entries = fs.readdirSync(src, { withFileTypes: true });
+  for (const entry of entries) {
+    const srcPath = path.join(src, entry.name);
+    const destPath = path.join(dest, entry.name);
+    if (entry.isDirectory()) {
+      copyDirSync(srcPath, destPath);
+    } else {
+      fs.copyFileSync(srcPath, destPath);
+    }
+  }
+}
+
+// 0. Copy App Launcher Icons to android res
+const iconSrcDir = path.join('android_res');
+const resDestDir = path.join('android', 'app', 'src', 'main', 'res');
+if (fs.existsSync(iconSrcDir) && fs.existsSync(resDestDir)) {
+  copyDirSync(iconSrcDir, resDestDir);
+  console.log('✓ Successfully copied launcher icons to android/app/src/main/res/');
+}
+
+// 1. AndroidManifest.xml: Inject permissions, hardware features, and clean label
 const manifestPath = path.join('android', 'app', 'src', 'main', 'AndroidManifest.xml');
 if (fs.existsSync(manifestPath)) {
   let manifest = fs.readFileSync(manifestPath, 'utf8');
+
+  // Set proper human-readable label
+  manifest = manifest.replace(/android:label="[^"]*"/, 'android:label="BikeParkGo"');
+
   const perms = `
     <!-- PujoBike Required Permissions -->
     <uses-permission android:name="android.permission.INTERNET" />
@@ -14,19 +42,25 @@ if (fs.existsSync(manifestPath)) {
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
     <uses-permission android:name="android.permission.CAMERA" />
     <uses-permission android:name="android.permission.VIBRATE" />
+
+    <!-- Optional Hardware Features -->
+    <uses-feature android:name="android.hardware.camera" android:required="false" />
+    <uses-feature android:name="android.hardware.camera.autofocus" android:required="false" />
+    <uses-feature android:name="android.hardware.location.gps" android:required="false" />
 `;
   if (!manifest.includes('ACCESS_FINE_LOCATION')) {
     manifest = manifest.replace('<application', `${perms}\n    <application`);
     fs.writeFileSync(manifestPath, manifest, 'utf8');
     console.log('✓ Successfully injected permissions into AndroidManifest.xml');
   } else {
-    console.log('• AndroidManifest.xml already contains permissions');
+    fs.writeFileSync(manifestPath, manifest, 'utf8');
+    console.log('• AndroidManifest.xml verified');
   }
 } else {
   console.warn('! AndroidManifest.xml not found at:', manifestPath);
 }
 
-// 2. android/app/build.gradle: Enforce compileSdk 35, minSdk 21, targetSdk 35
+// 2. android/app/build.gradle: Enforce compileSdk 35, minSdk 21, targetSdk 34, and no-minify release signing
 const appGradlePath = path.join('android', 'app', 'build.gradle');
 if (fs.existsSync(appGradlePath)) {
   let appGradle = fs.readFileSync(appGradlePath, 'utf8');
@@ -42,12 +76,34 @@ if (fs.existsSync(appGradlePath)) {
   appGradle = appGradle.replace(/minSdkVersion\s*=\s*.+/g, 'minSdkVersion = 21');
 
   // Match targetSdk
-  appGradle = appGradle.replace(/targetSdk\s*=\s*.+/g, 'targetSdk = 35');
-  appGradle = appGradle.replace(/targetSdkVersion\s+.+/g, 'targetSdkVersion 35');
-  appGradle = appGradle.replace(/targetSdkVersion\s*=\s*.+/g, 'targetSdkVersion = 35');
+  appGradle = appGradle.replace(/targetSdk\s*=\s*.+/g, 'targetSdk = 34');
+  appGradle = appGradle.replace(/targetSdkVersion\s+.+/g, 'targetSdkVersion 34');
+  appGradle = appGradle.replace(/targetSdkVersion\s*=\s*.+/g, 'targetSdkVersion = 34');
+
+  // Disable R8 minification to prevent runtime reflection crashes on launch
+  if (!appGradle.includes('minifyEnabled false')) {
+    appGradle = appGradle.replace(
+      /buildTypes\s*\{[\s\S]*?release\s*\{[\s\S]*?\}/,
+      `signingConfigs {
+        release {
+            storeFile file('upload-keystore.jks')
+            storePassword 'bikeparkgo123'
+            keyAlias 'upload'
+            keyPassword 'bikeparkgo123'
+        }
+    }
+    buildTypes {
+        release {
+            signingConfig signingConfigs.release
+            minifyEnabled false
+            shrinkResources false
+        }
+    }`
+    );
+  }
 
   fs.writeFileSync(appGradlePath, appGradle, 'utf8');
-  console.log('✓ Configured android/app/build.gradle (compileSdk=35, minSdk=21, targetSdk=35)');
+  console.log('✓ Configured android/app/build.gradle with signingConfig and minifyEnabled=false');
 } else {
   console.warn('! android/app/build.gradle not found');
 }
@@ -67,7 +123,7 @@ subprojects {
                 compileSdkVersion 35
                 defaultConfig {
                     minSdkVersion 21
-                    targetSdkVersion 35
+                    targetSdkVersion 34
                 }
             }
         }
