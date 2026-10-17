@@ -27,15 +27,37 @@ jobs:
           channel: 'stable'
           cache: true
 
-      - name: Ensure Android Wrapper
-        run: flutter create --platforms=android --org com.pujobike .
+      - name: Generate Official Android Project
+        run: flutter create --platforms=android --org com.bikeparkgo .
 
-      - name: Restore Custom Android Permissions
+      - name: Configure Android Permissions and MinSdk 21
         run: |
-          mkdir -p android/app/src/main
-          cp -f AndroidManifest_custom.xml android/app/src/main/AndroidManifest.xml || true
+          python3 -c "
+          manifest_path = 'android/app/src/main/AndroidManifest.xml'
+          with open(manifest_path, 'r') as f:
+              content = f.read()
+          perms = '''
+    <uses-permission android:name=\"android.permission.INTERNET\"/>
+    <uses-permission android:name=\"android.permission.ACCESS_FINE_LOCATION\"/>
+    <uses-permission android:name=\"android.permission.ACCESS_COARSE_LOCATION\"/>
+    <uses-permission android:name=\"android.permission.CAMERA\"/>
+    <uses-permission android:name=\"android.permission.VIBRATE\"/>
+  '''
+          if 'ACCESS_FINE_LOCATION' not in content:
+              content = content.replace('<application', perms + '  <application')
+              with open(manifest_path, 'w') as f:
+                  f.write(content)
 
-      - name: Get Dependencies
+          gradle_path = 'android/app/build.gradle'
+          with open(gradle_path, 'r') as f:
+              g_content = f.read()
+          g_content = g_content.replace('minSdkVersion = flutter.minSdkVersion', 'minSdkVersion = 21')
+          g_content = g_content.replace('minSdkVersion flutter.minSdkVersion', 'minSdkVersion 21')
+          with open(gradle_path, 'w') as f:
+              f.write(g_content)
+          "
+
+      - name: Fetch Dependencies
         run: flutter pub get
 
       - name: Build Release APK
@@ -44,6 +66,6 @@ jobs:
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: PujoBike-Release-APK
+          name: BikeParkGo-Release-APK
           path: build/app/outputs/flutter-apk/app-release.apk
           if-no-files-found: error
