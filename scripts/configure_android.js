@@ -33,7 +33,7 @@ if (fs.existsSync(rootGradlePath)) {
   const subprojectRule = `
 subprojects {
     afterEvaluate { project ->
-        if (project.hasProperty('android')) {
+        if (project.name != 'app' && project.hasProperty('android')) {
             project.android {
                 if (namespace == null) {
                     namespace project.group
