@@ -56,12 +56,15 @@ jobs:
           echo '```' >> $GITHUB_STEP_SUMMARY
           exit 1
 
-      - name: List Generated APK Files
-        run: ls -R build/app/outputs/apk/ || ls -R build/app/outputs/ || true
+      - name: Locate APK Files
+        run: |
+          mkdir -p release-apk
+          find build -name "*.apk" -exec cp -v {} release-apk/ \;
+          ls -la release-apk/
 
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
         with:
           name: BikeParkGo-Release-APK
-          path: build/app/outputs/**/*.apk
+          path: release-apk/*.apk
           if-no-files-found: error
