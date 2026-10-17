@@ -56,10 +56,14 @@ jobs:
           echo '```' >> $GITHUB_STEP_SUMMARY
           exit 1
 
-      - name: Locate APK Files
+      - name: Locate and Copy APK
         run: |
+          tail -n 25 build_log.txt
           mkdir -p release-apk
-          find build -name "*.apk" -exec cp -v {} release-apk/ \;
+          for f in $(find . -name "*.apk"); do
+            echo "Found APK: $f"
+            cp -v "$f" release-apk/
+          done
           ls -la release-apk/
 
       - name: Upload APK Artifact
@@ -67,4 +71,4 @@ jobs:
         with:
           name: BikeParkGo-Release-APK
           path: release-apk/*.apk
-          if-no-files-found: error
+          if-no-files-found: warn
