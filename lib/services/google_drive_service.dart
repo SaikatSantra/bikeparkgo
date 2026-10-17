@@ -8,7 +8,7 @@ class GoogleDriveService {
   static String webhookUrl = "https://script.google.com/macros/s/AKfycbwKjRAMN0Vla9x_ljpDVOx2wQGoraSZSScoe5Fuu7UU91hzoDZnJrEmyMw7NCupAr4V/exec";
   
   // Must match API_SECRET_TOKEN in Code.gs
-  static const String secretToken = "Bikeparkgo_SecureToken_2026_Trishul";
+  static const String secretToken = "BikeParkGo_SecureToken_2026_Trishul";
 
   /// Top-notch secure sync to Google Drive
   /// Creates: BikeParkGo_Users/<User_Name>_<Phone>/
